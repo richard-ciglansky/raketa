@@ -1,15 +1,16 @@
+import math
+
 def transform_to_kinematics(measurements):
     """
     Transforms a list of 7-number tuples (time, accelX, accelY, accelZ, rotX, rotY, rotZ)
-    into a list of dictionaries with {time, posX, posY, posZ, velX, velY, velZ}.
+    into a list of lists with {time, ax, ay, az, rx, ry, rz, posX, posY, posZ, velX, velY, velZ, roll, pitch, yaw}.
     
     Assumptions:
-    - time is in the same unit as the input (e.g., milliseconds or seconds).
-    - If time is in milliseconds, delta_t should be converted to seconds if needed.
-    - Here we'll treat time as seconds for simplicity or use the difference directly.
-    - We'll use simple Euler integration: v = v + a*dt, p = p + v*dt.
-    - For rotation, without a clear coordinate frame or conversion rule, 
-      this implementation treats acceleration as already in the global frame.
+    - time is in milliseconds and is converted to seconds for integration.
+    - rx, ry, rz are in degrees/second.
+    - We'll use simple Euler integration for both orientation and position/velocity.
+    - Rotation order: Z then Y then X (Yaw, Pitch, Roll).
+    - Transformation from body to global frame is applied to acceleration.
     """
     result = []
     
@@ -20,27 +21,54 @@ def transform_to_kinematics(measurements):
     prev_time = measurements[0][0]
     velX, velY, velZ = 0.0, 0.0, 0.0
     posX, posY, posZ = 0.0, 0.0, 0.0
+    roll, pitch, yaw = 0.0, 0.0, 0.0 # Orientation in radians
     
     # First point at t0
     time, ax, ay, az, rx, ry, rz = measurements[0]
-    result.append([prev_time, ax, ay, az, rx, ry, rz, posX, posY, posZ, velX, velY, velZ])
+    # At t0, we assume global frame aligns with body frame, or we start from initial orientation 0.
+    # Initial record: include orientation
+    result.append([time, ax, ay, az, rx, ry, rz, posX, posY, posZ, velX, velY, velZ, 
+                   math.degrees(roll), math.degrees(pitch), math.degrees(yaw)])
     
     for i in range(1, len(measurements)):
         time, ax, ay, az, rx, ry, rz = measurements[i]
-        # Calculate time difference (assuming time is in ms, convert to s)
         delta_t = (time - prev_time) / 1000.0
         
-        # Simple Euler integration for velocity
-        velX += ax * delta_t
-        velY += ay * delta_t
-        velZ += az * delta_t
+        # 1. Update orientation (integrate angular velocity)
+        # Convert deg/s to rad/s
+        roll += math.radians(rx) * delta_t
+        pitch += math.radians(ry) * delta_t
+        yaw += math.radians(rz) * delta_t
         
-        # Simple Euler integration for position
+        # 2. Transform body acceleration (ax, ay, az) to global acceleration (gax, gay, gaz)
+        # Using ZYX (Yaw-Pitch-Roll) intrinsic rotation or XYZ extrinsic.
+        # R = Rz(yaw) * Ry(pitch) * Rx(roll)
+        
+        cr, sr = math.cos(roll), math.sin(roll)
+        cp, sp = math.cos(pitch), math.sin(pitch)
+        cy, sy = math.cos(yaw), math.sin(yaw)
+        
+        # Rotation matrix R:
+        # R = [ cy*cp, cy*sp*sr - sy*cr, cy*sp*cr + sy*sr ]
+        #     [ sy*cp, sy*sp*sr + cy*cr, sy*sp*cr - cy*sr ]
+        #     [ -sp,   cp*sr,            cp*cr           ]
+        
+        gax = ax * (cy * cp) + ay * (cy * sp * sr - sy * cr) + az * (cy * sp * cr + sy * sr)
+        gay = ax * (sy * cp) + ay * (sy * sp * sr + cy * cr) + az * (sy * sp * cr - cy * sr)
+        gaz = ax * (-sp)     + ay * (cp * sr)                + az * (cp * cr)
+        
+        # 3. Simple Euler integration for velocity
+        velX += gax * delta_t
+        velY += gay * delta_t
+        velZ += gaz * delta_t
+        
+        # 4. Simple Euler integration for position
         posX += velX * delta_t
         posY += velY * delta_t
         posZ += velZ * delta_t
         
-        result.append([time, ax, ay, az, rx, ry, rz, posX, posY, posZ, velX, velY, velZ])
+        result.append([time, ax, ay, az, rx, ry, rz, posX, posY, posZ, velX, velY, velZ, 
+                       math.degrees(roll), math.degrees(pitch), math.degrees(yaw)])
         
         prev_time = time
         
@@ -133,6 +161,45 @@ def transform_to_si(measurements, AccelerationRange, RotationRange):
         ))
 
     return transformed_result
+
+
+def average_data(measurements, n):
+    """
+    Transforms input measurements into a sliding average of respective values
+    except for time, for a specified number of successive samples (n).
+    
+    If n is less than 1, returns the original measurements.
+    """
+    if not measurements or n <= 1:
+        return measurements
+
+    result = []
+    
+    # We use a sliding window of size n ending at the current sample.
+    for i in range(len(measurements)):
+        start_idx = max(0, i - n + 1)
+        window = measurements[start_idx : i + 1]
+        window_size = len(window)
+        
+        sum_ax = sum(m[1] for m in window)
+        sum_ay = sum(m[2] for m in window)
+        sum_az = sum(m[3] for m in window)
+        sum_rx = sum(m[4] for m in window)
+        sum_ry = sum(m[5] for m in window)
+        sum_rz = sum(m[6] for m in window)
+        
+        result.append((
+            measurements[i][0], # Keep current time
+            sum_ax / window_size,
+            sum_ay / window_size,
+            sum_az / window_size,
+            sum_rx / window_size,
+            sum_ry / window_size,
+            sum_rz / window_size
+        ))
+        
+    return result
+
 
 def normalize_time(measurements):
     if not measurements:

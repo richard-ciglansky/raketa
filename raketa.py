@@ -1,7 +1,7 @@
 import csv
 import matplotlib.pyplot as plt
 
-from kinematics import transform_to_si, normalize_time, normalize_data, transform_to_kinematics
+from kinematics import transform_to_si, normalize_time, normalize_data, transform_to_kinematics, average_data
 
 
 def read_measurements(filename, breaking_id, breaking_time):
@@ -19,7 +19,12 @@ def data_pipeline(filename, breaking_id, breaking_time, accRange, rotRange):
     return transform_to_kinematics(
         transform_to_si(
             normalize_time(
-                read_measurements(filename, breaking_id, breaking_time)),
+                average_data(
+                    normalize_data(
+                    read_measurements(filename, breaking_id, breaking_time),
+                    3000),
+                10))
+        ,
             accRange,
             rotRange))
 
@@ -36,15 +41,15 @@ datasets = [
     {"label": "raketa3", "data": measure3}
 ]
 
-plt.figure(figsize=(10, 10))
+plt.figure(figsize=(20, 10))
 
 # Subplot 1: Acceleration
 plt.subplot(3, 1, 1)
 for ds in datasets:
     times = [m[0] for m in ds["data"]]
-    values = [m[4] for m in ds["data"]]
+    values = [m[3] for m in ds["data"]]
     plt.plot(times, values, label=ds["label"])
-plt.ylabel('Value (m/s^2)')
+plt.ylabel('Acceleraration (m/s^2)')
 plt.title('Rocket Data: Acceleration, Velocity and Height')
 plt.grid(True)
 plt.legend()

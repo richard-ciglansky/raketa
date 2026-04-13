@@ -1,4 +1,33 @@
-from kinematics import transform_to_kinematics, normalize_data, transform_to_si
+from kinematics import transform_to_kinematics, normalize_data, transform_to_si, average_data
+
+
+def test_average_data():
+    # Test data: (time_ms, ax, ay, az, rx, ry, rz)
+    measurements = [
+        (0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+        (10, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0),
+        (20, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0),
+        (30, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0)
+    ]
+    
+    # n = 2
+    # Sample 0: avg(1.0) = 1.0
+    # Sample 1: avg(1.0, 2.0) = 1.5
+    # Sample 2: avg(2.0, 3.0) = 2.5
+    # Sample 3: avg(3.0, 4.0) = 3.5
+    
+    averaged = average_data(measurements, 2)
+    
+    print("\n--- average_data (n=2) ---")
+    for i, res in enumerate(averaged):
+        print(f"Sample {i} (Time {res[0]}):")
+        print(f"  Accel: ({res[1]:.2f}, {res[2]:.2f}, {res[3]:.2f})")
+        
+    expected_ax1 = 1.5
+    if abs(averaged[1][1] - expected_ax1) > 0.001:
+        print(f"FAILURE: Expected ax[1] {expected_ax1}, got {averaged[1][1]}")
+    else:
+        print("SUCCESS: average_data (n=2) test passed")
 
 def test_transform():
     # Test data: (time_ms, accelX, accelY, accelZ, rotX, rotY, rotZ)
@@ -12,9 +41,9 @@ def test_transform():
     
     print("--- transform_to_kinematics ---")
     for i, res in enumerate(transformed):
-        print(f"Time {res['time']}:")
-        print(f"  Pos: ({res['positionX']:.2f}, {res['positionY']:.2f}, {res['positionZ']:.2f})")
-        print(f"  Vel: ({res['velocityX']:.2f}, {res['velocityY']:.2f}, {res['velocityZ']:.2f})")
+        print(f"Time {res[0]}:")
+        print(f"  Pos: ({res[7]:.2f}, {res[8]:.2f}, {res[9]:.2f})")
+        print(f"  Vel: ({res[10]:.2f}, {res[11]:.2f}, {res[12]:.2f})")
 
 def test_normalize():
     # Test data: (time_ms, accelX, accelY, accelZ, rotX, rotY, rotZ)
@@ -47,10 +76,10 @@ def test_normalize():
         print(f"FAILURE: Expected ax[0] {expected_ax0}, got {normalized[0][1]}")
 
 def test_transform_to_si():
-    # Test data with 20-bit signed integers
-    # MAX_20BIT = 524287
+    # Test data with 16-bit signed integers
+    # MAX_16BIT = 32767
     measurements = [
-        (0, 524287, 0, -524288, 524287, 0, -524288)
+        (0, 32767, 0, -32768, 32767, 0, -32768)
     ]
     
     accel_range = 16 # 16G
@@ -74,6 +103,7 @@ def test_transform_to_si():
          print(f"FAILURE: Expected rx {expected_rx}, got {res[4]}")
 
 if __name__ == "__main__":
+    test_average_data()
     test_transform()
     test_normalize()
     test_transform_to_si()
