@@ -32,8 +32,8 @@ measure1 = data_pipeline('motor_D9-7_start_1.csv', "190400", "0", 16,2000.0)
 measure2 = data_pipeline('motor_D9-7_start_2.csv', "624995", "0", 16, 2000.0)
 measure3 = data_pipeline('raketa3.csv', "624995", "0", 16, 2000.0)
 
-# Rename raketa3.csv for consistency as per user request (implied by "raketa.csv" in description)
-# The user asked for "raketa.csv" but only "raketa3.csv" exists.
+# Rename raketa3.csv for consistency as per user request (implied by "raketa.orig.csv" in description)
+# The user asked for "raketa.orig.csv" but only "raketa3.csv" exists.
 
 datasets = [
     {"label": "motor_D9-7_start_1", "data": measure1},
