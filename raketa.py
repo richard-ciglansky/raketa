@@ -55,10 +55,27 @@ def truncate_to_landing(data):
             return data[:j + 1]
     return data
 
+def truncate_to_start(data, accel_threshold=10.0):
+    if not data:
+        return data
+    start_idx = 0
+    for i, m in enumerate(data):
+        if abs(m[3]) > accel_threshold:
+            start_idx = i
+            break
+    trimmed = data[start_idx:]
+    if not trimmed:
+        return trimmed
+    t0 = trimmed[0][0]
+    return [[m[0] - t0] + list(m[1:]) for m in trimmed]
+
+def prepare(data):
+    return truncate_to_landing(truncate_to_start(data))
+
 datasets = [
-    {"label": "D9-7_start_1", "data": truncate_to_landing(measure1)},
-    {"label": "D9-7_start_2", "data": truncate_to_landing(measure2)},
-    {"label": "C6-7", "data": truncate_to_landing(measure3)}
+    {"label": "D9-7_start_1", "data": prepare(measure1)},
+    {"label": "D9-7_start_2", "data": prepare(measure2)},
+    {"label": "C6-7", "data": prepare(measure3)}
 ]
 
 plt.figure(figsize=(20, 15))
