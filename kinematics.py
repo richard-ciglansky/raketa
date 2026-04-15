@@ -1,6 +1,6 @@
 import math
 
-def transform_to_kinematics(measurements, offset):
+def transform_to_kinematics(measurements, accel_factor, rot_factor, offset):
     """
     Transforms a list of 7-number tuples (time, accelX, accelY, accelZ, rotX, rotY, rotZ)
     into a list of lists with {time, ax, ay, az, rx, ry, rz, posX, posY, posZ, velX, velY, velZ, roll, pitch, yaw}.
@@ -23,40 +23,70 @@ def transform_to_kinematics(measurements, offset):
     posX, posY, posZ = 0.0, 0.0, 0.0
     roll, pitch, yaw = 0.0, 0.0, 0.0 # Orientation in radians
     
+    def rotated_offset(roll, pitch, yaw):
+        cr, sr = math.cos(roll), math.sin(roll)
+        cp, sp = math.cos(pitch), math.sin(pitch)
+        cy, sy = math.cos(yaw), math.sin(yaw)
+        ox, oy, oz = offset[0], offset[1], offset[2]
+        rox = ox * (cy * cp) + oy * (cy * sp * sr - sy * cr) + oz * (cy * sp * cr + sy * sr)
+        roy = ox * (sy * cp) + oy * (sy * sp * sr + cy * cr) + oz * (sy * sp * cr - cy * sr)
+        roz = ox * (-sp)     + oy * (cp * sr)                + oz * (cp * cr)
+        return rox, roy, roz
+
     # First point at t0
     time, ax, ay, az, rx, ry, rz = measurements[0]
+    rox, roy, roz = rotated_offset(roll, pitch, yaw)
+    ax -= rox
+    ay -= roy
+    az -= roz
+
+    time, ax, ay, az, rx, ry, rz = transform_measurement_to_si([time, ax, ay, az, rz, ry, rz], accel_factor, rot_factor)
+
     # At t0, we assume global frame aligns with body frame, or we start from initial orientation 0.
     # Initial record: include orientation
-    result.append([time, ax, ay, az, rx, ry, rz, posX, posY, posZ, velX, velY, velZ, 
+    result.append([time, ax, ay, az, rx, ry, rz, posX, posY, posZ, velX, velY, velZ,
                    math.degrees(roll), math.degrees(pitch), math.degrees(yaw)])
-    
+
     for i in range(1, len(measurements)):
         time, ax, ay, az, rx, ry, rz = measurements[i]
         delta_t = (time - prev_time) / 1000.0
-        
+
         # 1. Update orientation (integrate angular velocity)
         # Convert deg/s to rad/s
         roll += math.radians(rx) * delta_t
         pitch += math.radians(ry) * delta_t
         yaw += math.radians(rz) * delta_t
-        
+
         # 2. Transform body acceleration (ax, ay, az) to global acceleration (gax, gay, gaz)
         # Using ZYX (Yaw-Pitch-Roll) intrinsic rotation or XYZ extrinsic.
         # R = Rz(yaw) * Ry(pitch) * Rx(roll)
-        
+
         cr, sr = math.cos(roll), math.sin(roll)
         cp, sp = math.cos(pitch), math.sin(pitch)
         cy, sy = math.cos(yaw), math.sin(yaw)
-        
+
         # Rotation matrix R:
         # R = [ cy*cp, cy*sp*sr - sy*cr, cy*sp*cr + sy*sr ]
         #     [ sy*cp, sy*sp*sr + cy*cr, sy*sp*cr - cy*sr ]
         #     [ -sp,   cp*sr,            cp*cr           ]
-        
-        gax = ax * (cy * cp) + ay * (cy * sp * sr - sy * cr) + az * (cy * sp * cr + sy * sr)
-        gay = ax * (sy * cp) + ay * (sy * sp * sr + cy * cr) + az * (sy * sp * cr - cy * sr)
-        gaz = ax * (-sp)     + ay * (cp * sr)                + az * (cp * cr)
-        
+
+        # rox = offset[0] * (cy * cp) + offset[1] * (cy * sp * sr - sy * cr) + offset[2] * (cy * sp * cr + sy * sr)
+        # roy = offset[0] * (sy * cp) + offset[1] * (sy * sp * sr + cy * cr) + offset[2] * (sy * sp * cr - cy * sr)
+        # roz = offset[0] * (-sp)     + offset[1] * (cp * sr)                + offset[2] * (cp * cr)
+        ax -= offset[0]
+        ay -= offset[1]
+        az -= offset[2]
+
+        time, ax, ay, az, rx, ry, rz = transform_measurement_to_si([time, ax, ay, az, rz, ry, rz], accel_factor, rot_factor)
+
+        #gax = ax * (cy * cp) + ay * (cy * sp * sr - sy * cr) + az * (cy * sp * cr + sy * sr)
+        #gay = ax * (sy * cp) + ay * (sy * sp * sr + cy * cr) + az * (sy * sp * cr - cy * sr)
+        #gaz = ax * (-sp)     + ay * (cp * sr)                + az * (cp * cr)
+
+        gax = ax
+        gay = ay
+        gaz = az
+
         # 3. Simple Euler integration for velocity
         velX += gax * delta_t
         velY += gay * delta_t
@@ -111,7 +141,7 @@ def normalize_data(measurements, SampleSize):
     return [avg_ax, avg_ay, avg_az, avg_rx, avg_ry, avg_rz]
 
 
-def transform_to_si(measurements, AccelerationRange, RotationRange):
+def transform_measurement_to_si(measurement, accel_factor, rot_factor):
     """
     Transforms a list of 7-number tuples (time, accelX, accelY, accelZ, rotX, rotY, rotZ)
     where acceleration and rotation are 16-bit signed integers, into SI units.
@@ -125,19 +155,8 @@ def transform_to_si(measurements, AccelerationRange, RotationRange):
 
     16-bit signed integer range: -32768 to 32767 (2^15)
     """
-    if not measurements:
-        return []
-
-    # Max value for 16-bit signed integer is 2^16 - 1 = 32767
-    MAX_16BIT = 32767.0
-
-    # Conversion factors
-    accel_factor = (AccelerationRange * 9.81) / MAX_16BIT
-    rot_factor = RotationRange / MAX_16BIT
-
-    transformed_result = []
-    for time, ax, ay, az, rx, ry, rz in measurements:
-        transformed_result.append((
+    time, ax, ay, az, rx, ry, rz = measurement
+    return (
             time,
             ax * accel_factor,
             ay * accel_factor,
@@ -145,7 +164,13 @@ def transform_to_si(measurements, AccelerationRange, RotationRange):
             rx * rot_factor,
             ry * rot_factor,
             rz * rot_factor
-        ))
+        )
+
+def transform_to_si(measurements, accel_factor, rot_factor):
+
+    transformed_result = []
+    for measurement in measurements:
+        transformed_result.append(transform_measurement_to_si(measurement, accel_factor, rot_factor))
 
     return transformed_result
 

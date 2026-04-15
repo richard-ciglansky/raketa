@@ -1,5 +1,6 @@
 import csv
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 
 from kinematics import transform_to_si, normalize_time, normalize_data, transform_to_kinematics, average_data
 
@@ -17,12 +18,13 @@ def read_measurements(filename, breaking_id, breaking_time):
 
 def data_pipeline(measurements, accRange, rotRange, offset):
     return transform_to_kinematics(
-        transform_to_si(
-            normalize_time(
-                average_data(measurements, 10)
-            ),
-            accRange,
-            rotRange),
+        normalize_time(
+            #average_data(
+            measurements
+            #, 10)
+        ),
+        accRange,
+        rotRange,
         offset)
 
 measurements1 = read_measurements('motor_D9-7_start_1.csv', "190400", "0")
@@ -33,49 +35,138 @@ offset1 = normalize_data(measurements1, 3000)
 offset2 = normalize_data(measurements2, 3000)
 offset3 = normalize_data(measurements3, 3000)
 
-measure1 = data_pipeline(measurements1, 16,2000.0, offset1)
-measure2 = data_pipeline(measurements2, 16, 2000.0, offset2)
-measure3 = data_pipeline(measurements3, 16, 2000.0, offset3)
+# Max value for 16-bit signed integer is 2^16 - 1 = 32767
+MAX_16BIT = 32767.0
+
+# Conversion factors
+accel_factor = (16 * 9.81) / MAX_16BIT
+rot_factor = 1000 / MAX_16BIT
+
+measure1 = data_pipeline(measurements1, accel_factor, rot_factor, offset1)
+measure2 = data_pipeline(measurements2, accel_factor, rot_factor, offset2)
+measure3 = data_pipeline(measurements3, accel_factor, rot_factor, offset3)
+
+def truncate_to_landing(data):
+    if not data:
+        return data
+    max_idx = max(range(len(data)), key=lambda i: data[i][9])
+    for j in range(max_idx + 1, len(data)):
+        if data[j][9] <= 0:
+            return data[:j + 1]
+    return data
 
 datasets = [
-    {"label": "motor_D9-7_start_1", "data": measure1},
-    {"label": "motor_D9-7_start_2", "data": measure2},
-    {"label": "raketa3", "data": measure3}
+    {"label": "D9-7_start_1", "data": truncate_to_landing(measure1)},
+    {"label": "D9-7_start_2", "data": truncate_to_landing(measure2)},
+    {"label": "C6-7", "data": truncate_to_landing(measure3)}
 ]
 
-plt.figure(figsize=(20, 10))
+plt.figure(figsize=(20, 15))
+
+def configure_time_axis(ax):
+    ax.xaxis.set_major_locator(MultipleLocator(1))
+    ax.xaxis.set_minor_locator(MultipleLocator(0.1))
+    ax.grid(True, which='major', linewidth=0.8)
+    ax.grid(True, which='minor', linewidth=0.4, linestyle=':')
 
 # Subplot 1: Acceleration
-plt.subplot(3, 1, 1)
+ax1 = plt.subplot(3, 1, 1)
 for ds in datasets:
-    times = [m[0] for m in ds["data"]]
+    times = [m[0] / 1000.0 for m in ds["data"]]
     values = [m[3] for m in ds["data"]]
-    plt.plot(times, values, label=ds["label"])
-plt.ylabel('Acceleraration (m/s^2)')
-plt.title('Rocket Data: Acceleration, Velocity and Height')
-plt.grid(True)
-plt.legend()
+    ax1.plot(times, values, label=ds["label"])
+ax1.set_ylabel('Acceleraration (m/s^2)')
+ax1.set_title('Rocket Data: Acceleration, Velocity and Height')
+configure_time_axis(ax1)
+ax1.legend()
+
+
+def annotate_maxes(ax, series):
+    # series: list of (times, values, color)
+    peaks = []
+    for times, values, color in series:
+        if not values:
+            continue
+        max_idx = max(range(len(values)), key=lambda i: values[i])
+        peaks.append((times[max_idx], values[max_idx], color))
+
+    peaks.sort(key=lambda p: p[1], reverse=True)
+
+    fig = ax.get_figure()
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+
+    ax_bbox = ax.get_window_extent(renderer=renderer)
+
+    def candidate_offsets():
+        step = 16
+        for i in range(20):
+            yield (8, 10 + i * step)      # up-right stack
+        for i in range(20):
+            yield (-80, 10 + i * step)    # up-left stack
+        for i in range(20):
+            yield (8, -18 - i * step)     # down-right stack
+        for i in range(20):
+            yield (-80, -18 - i * step)   # down-left stack
+
+    placed_bboxes = []
+    for tmax, vmax, color in peaks:
+        ax.plot(tmax, vmax, 'o', color=color, markersize=4)
+        text = f'{vmax:.2f} @ {tmax:.2f}s'
+        best_ann = None
+        best_bbox = None
+        for dx, dy in candidate_offsets():
+            ann = ax.annotate(text,
+                              xy=(tmax, vmax),
+                              xytext=(dx, dy), textcoords='offset points',
+                              fontsize=11, color=color,
+                              arrowprops=dict(arrowstyle='-', color=color, lw=0.5))
+            fig.canvas.draw()
+            bbox = ann.get_window_extent(renderer=renderer)
+            inside = (bbox.x0 >= ax_bbox.x0 and bbox.x1 <= ax_bbox.x1
+                      and bbox.y0 >= ax_bbox.y0 and bbox.y1 <= ax_bbox.y1)
+            overlap = any(bbox.overlaps(b) for b in placed_bboxes)
+            if inside and not overlap:
+                best_ann = ann
+                best_bbox = bbox
+                break
+            ann.remove()
+        if best_ann is None:
+            best_ann = ax.annotate(text,
+                                   xy=(tmax, vmax),
+                                   xytext=(8, 10), textcoords='offset points',
+                                   fontsize=11, color=color,
+                                   arrowprops=dict(arrowstyle='-', color=color, lw=0.5))
+            fig.canvas.draw()
+            best_bbox = best_ann.get_window_extent(renderer=renderer)
+        placed_bboxes.append(best_bbox)
 
 # Subplot 2: Velocity
-plt.subplot(3, 1, 2)
+ax2 = plt.subplot(3, 1, 2)
+vel_series = []
 for ds in datasets:
-    times = [m[0] for m in ds["data"]]
-    velocities = [m[9] for m in ds["data"]]
-    plt.plot(times, velocities, label=ds["label"])
-plt.ylabel('Velocity (m/s)')
-plt.grid(True)
-plt.legend()
+    times = [m[0] / 1000.0 for m in ds["data"]]
+    velocities = [m[12] for m in ds["data"]]
+    line, = ax2.plot(times, velocities, label=ds["label"])
+    vel_series.append((times, velocities, line.get_color()))
+ax2.set_ylabel('Velocity (m/s)')
+configure_time_axis(ax2)
+ax2.legend()
+annotate_maxes(ax2, vel_series)
 
 # Subplot 3: Height
-plt.subplot(3, 1, 3)
+ax3 = plt.subplot(3, 1, 3)
+height_series = []
 for ds in datasets:
-    times = [m[0] for m in ds["data"]]
-    heights = [m[12] for m in ds["data"]]
-    plt.plot(times, heights, label=ds["label"])
-plt.ylabel('Height (m)')
-plt.xlabel('Time (ms)')
-plt.grid(True)
-plt.legend()
+    times = [m[0] / 1000.0 for m in ds["data"]]
+    heights = [m[9] for m in ds["data"]]
+    line, = ax3.plot(times, heights, label=ds["label"])
+    height_series.append((times, heights, line.get_color()))
+ax3.set_ylabel('Height (m)')
+ax3.set_xlabel('Time (s)')
+configure_time_axis(ax3)
+ax3.legend()
+annotate_maxes(ax3, height_series)
 
 plt.tight_layout()
 plt.show()
