@@ -15,29 +15,27 @@ def read_measurements(filename, breaking_id, breaking_time):
     return measure
 
 
-def data_pipeline(filename, breaking_id, breaking_time, accRange, rotRange, offset):
+def data_pipeline(measurements, accRange, rotRange, offset):
     return transform_to_kinematics(
         transform_to_si(
             normalize_time(
-                average_data(
-                    normalize_data(
-                    read_measurements(filename, breaking_id, breaking_time),
-                    3000),
-                10))
-        ,
+                average_data(measurements, 10)
+            ),
             accRange,
-            rotRange))
+            rotRange),
+        offset)
 
-offset1 = normalize_data('motor_D9-7_start_1.csv', 3000)
-offset2 = normalize_data('motor_D9-7_start_2.csv', 3000)
-offset3 = normalize_data('raketa3.csv', "624995", 3000)
+measurements1 = read_measurements('motor_D9-7_start_1.csv', "190400", "0")
+measurements2 = read_measurements('motor_D9-7_start_2.csv', "624995", "0")
+measurements3 = read_measurements('raketa3.csv', "624995", "0")
 
-measure1 = data_pipeline('motor_D9-7_start_1.csv', "190400", "0", 16,2000.0, offset1)
-measure2 = data_pipeline('motor_D9-7_start_2.csv', "624995", "0", 16, 2000.0, offset2)
-measure3 = data_pipeline('raketa3.csv', "624995", "0", 16, 2000.0, offset3)
+offset1 = normalize_data(measurements1, 3000)
+offset2 = normalize_data(measurements2, 3000)
+offset3 = normalize_data(measurements3, 3000)
 
-# Rename raketa3.csv for consistency as per user request (implied by "raketa.orig.csv" in description)
-# The user asked for "raketa.orig.csv" but only "raketa3.csv" exists.
+measure1 = data_pipeline(measurements1, 16,2000.0, offset1)
+measure2 = data_pipeline(measurements2, 16, 2000.0, offset2)
+measure3 = data_pipeline(measurements3, 16, 2000.0, offset3)
 
 datasets = [
     {"label": "motor_D9-7_start_1", "data": measure1},

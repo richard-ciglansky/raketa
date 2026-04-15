@@ -1,6 +1,6 @@
 import math
 
-def transform_to_kinematics(measurements):
+def transform_to_kinematics(measurements, offset):
     """
     Transforms a list of 7-number tuples (time, accelX, accelY, accelZ, rotX, rotY, rotZ)
     into a list of lists with {time, ax, ay, az, rx, ry, rz, posX, posY, posZ, velX, velY, velZ, roll, pitch, yaw}.
@@ -108,8 +108,7 @@ def normalize_data(measurements, SampleSize):
     avg_ry = sum_ry / actual_sample_size
     avg_rz = sum_rz / actual_sample_size
 
-    # -2048 is the offset for Z axis of the accelerometer (1G range)
-    return [avg_ax, avg_ay, avg_az - 2048, avg_rx, avg_ry, avg_rz]
+    return [avg_ax, avg_ay, avg_az, avg_rx, avg_ry, avg_rz]
 
 
 def transform_to_si(measurements, AccelerationRange, RotationRange):
