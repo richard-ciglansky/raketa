@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c1cc31e8-c3de-46f2-83a1-46f1f6b4b46b" name="Changes" comment="Graphs are OK even labels are good.">
-      <change beforePath="$PROJECT_DIR$/raketa.py" beforeDir="false" afterPath="$PROJECT_DIR$/raketa.py" afterDir="false" />
-    </list>
+    <list default="true" id="c1cc31e8-c3de-46f2-83a1-46f1f6b4b46b" name="Changes" comment="Graph shownj just from the point of ignition." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -38,7 +36,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "Python.raketa.executor": "Run",
+    "Python.raketa.executor": "Debug",
     "RunOnceActivity.MCP Project settings loaded": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
@@ -109,7 +107,7 @@
       <workItem from="1776012291681" duration="10544000" />
       <workItem from="1776111786258" duration="10903000" />
       <workItem from="1776200371429" duration="5000" />
-      <workItem from="1776274082033" duration="7846000" />
+      <workItem from="1776274082033" duration="8684000" />
     </task>
     <task id="LOCAL-00001" summary="First commit of somehow working program">
       <option name="closed" value="true" />
@@ -151,7 +149,15 @@
       <option name="project" value="LOCAL" />
       <updated>1776281521565</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Graph shownj just from the point of ignition.">
+      <option name="closed" value="true" />
+      <created>1776282002512</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1776282002512</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -162,7 +168,8 @@
     <MESSAGE value="Calculating calibration offset for axis" />
     <MESSAGE value="Some compilable runnable version" />
     <MESSAGE value="Graphs are OK even labels are good." />
-    <option name="LAST_COMMIT_MESSAGE" value="Graphs are OK even labels are good." />
+    <MESSAGE value="Graph shownj just from the point of ignition." />
+    <option name="LAST_COMMIT_MESSAGE" value="Graph shownj just from the point of ignition." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -187,11 +194,16 @@
           <line>141</line>
           <option name="timeStamp" value="14" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/kinematics.py</url>
+          <line>104</line>
+          <option name="timeStamp" value="15" />
+        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/raketa$raketa.coverage" NAME="raketa Coverage Results" MODIFIED="1776119194682" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/raketa_github$raketa.coverage" NAME="raketa Coverage Results" MODIFIED="1776281572175" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/raketa_github$raketa.coverage" NAME="raketa Coverage Results" MODIFIED="1776282103441" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
