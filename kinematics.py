@@ -107,21 +107,9 @@ def normalize_data(measurements, SampleSize):
     avg_rx = sum_rx / actual_sample_size
     avg_ry = sum_ry / actual_sample_size
     avg_rz = sum_rz / actual_sample_size
-    
-    # Normalize all measurements
-    normalized_result = []
-    for time, ax, ay, az, rx, ry, rz in measurements:
-        normalized_result.append((
-            time,
-            ax - avg_ax,
-            ay - avg_ay,
-            az - avg_az,
-            rx - avg_rx,
-            ry - avg_ry,
-            rz - avg_rz
-        ))
-        
-    return normalized_result
+
+    # -2048 is the offset for Z axis of the accelerometer (1G range)
+    return [avg_ax, avg_ay, avg_az - 2048, avg_rx, avg_ry, avg_rz]
 
 
 def transform_to_si(measurements, AccelerationRange, RotationRange):

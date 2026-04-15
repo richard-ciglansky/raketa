@@ -15,7 +15,7 @@ def read_measurements(filename, breaking_id, breaking_time):
     return measure
 
 
-def data_pipeline(filename, breaking_id, breaking_time, accRange, rotRange):
+def data_pipeline(filename, breaking_id, breaking_time, accRange, rotRange, offset):
     return transform_to_kinematics(
         transform_to_si(
             normalize_time(
@@ -28,9 +28,13 @@ def data_pipeline(filename, breaking_id, breaking_time, accRange, rotRange):
             accRange,
             rotRange))
 
-measure1 = data_pipeline('motor_D9-7_start_1.csv', "190400", "0", 16,2000.0)
-measure2 = data_pipeline('motor_D9-7_start_2.csv', "624995", "0", 16, 2000.0)
-measure3 = data_pipeline('raketa3.csv', "624995", "0", 16, 2000.0)
+offset1 = normalize_data('motor_D9-7_start_1.csv', 3000)
+offset2 = normalize_data('motor_D9-7_start_2.csv', 3000)
+offset3 = normalize_data('raketa3.csv', "624995", 3000)
+
+measure1 = data_pipeline('motor_D9-7_start_1.csv', "190400", "0", 16,2000.0, offset1)
+measure2 = data_pipeline('motor_D9-7_start_2.csv', "624995", "0", 16, 2000.0, offset2)
+measure3 = data_pipeline('raketa3.csv', "624995", "0", 16, 2000.0, offset3)
 
 # Rename raketa3.csv for consistency as per user request (implied by "raketa.orig.csv" in description)
 # The user asked for "raketa.orig.csv" but only "raketa3.csv" exists.
